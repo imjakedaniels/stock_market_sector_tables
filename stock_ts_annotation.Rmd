@@ -1,0 +1,56 @@
+---
+title: "stock_emails"
+author: "Jake"
+date: "19/01/2020"
+output: html_document
+---
+
+```{r}
+library(quantmod)
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+getSymbols("M")
+```
+
+```{r}
+macys_since_2019 <- M %>%
+  as.data.frame() %>%
+  mutate(date = row.names(.),
+         date = ymd(date)) %>%
+  mutate(year = year(date)) %>%
+  filter(year > 2018)
+
+macys_since_2019 %>%
+  ggplot(aes(x=date, y= M.Open)) +
+  geom_line() +
+  scale_y_continuous("", labels = scales::dollar_format()) +
+  theme_minimal() +
+  geom_text(x = as.Date("2019-12-01"), 
+            y = 21, 
+            label = 'Announced 125 \nstores will close', 
+            size = 4, 
+            lineheight = 0.8,
+            colour = "grey50") +
+  geom_curve(aes(x = as.Date("2020-01-01"), 
+                 y = 20, 
+                 xend = as.Date("2020-02-03"), 
+                 yend = 17), 
+             colour = 'black', 
+             size = 0.5, 
+             curvature = -0.1,
+             arrow = arrow(length = unit(0.2, "cm"))) +
+  labs(title = "Macy's (M) Stock Price",
+       subtitle = "Daily, past year",
+       x = "") +
+  theme(panel.grid.minor.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(face = "bold"),
+        legend.position = "none")
+
+ggsave("visuals/macys_since_2019.png")
+```

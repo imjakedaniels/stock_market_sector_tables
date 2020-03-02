@@ -1,0 +1,70 @@
+---
+title: "heatmap"
+author: "Jake"
+date: "01/03/2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(quantmod)
+library(reactable)
+library(htmltools)
+```
+
+```{r}
+getSymbols("TSLA")
+```
+
+
+```{r}
+tsla_monthly <- TSLA %>%
+  as.data.frame() %>%
+  mutate(date = row.names(.),
+         date = ymd(date),
+         month = month(date),
+         year = year(date)) %>%
+  group_by(year, month) %>%
+  filter(date == min(date)) %>%
+  ungroup() %>%
+  mutate(monthly_change = TSLA.Close - lag(TSLA.Close),
+         monthly_percent_change = TSLA.Close / lag(TSLA.Close) - 1)
+
+tsla_spread <- tsla_monthly %>%
+  select(month, year, TSLA.Open) %>%
+  spread(month, TSLA.Open) %>%
+  select(-year) 
+
+tsla_spread[is.na(tsla_spread)] <- 0
+
+tsla_spread <- tsla_spread %>%
+  ts()
+
+dimnames <- list(min(tsla_monthly$year):max(tsla_monthly$year), month.abb)
+temps <- matrix(tsla_spread, ncol = 12, dimnames = dimnames)
+```
+
+
+```{r}
+# Excel-inspired 3-color scale
+GnYlRd <- function(x) rgb(colorRamp(c("#f8696b", "#ffeb84",  "#63be7b"))(x), maxColorValue = 255)
+
+reactable(
+  temps,
+  defaultColDef = colDef(
+    style = function(value) {
+      if (!is.numeric(value)) return()
+      normalized <- ((value - min(tsla_spread)) / (max(tsla_spread) - min(tsla_spread)))
+      color <- GnYlRd(normalized)
+      list(background = color)
+    },
+    format = colFormat(digits = 1),
+    minWidth = 75
+  ),
+  columns = list(
+    .rownames = colDef(name = "Year", sortable = TRUE, align = "left")
+  ),
+  bordered = TRUE
+)
+```
